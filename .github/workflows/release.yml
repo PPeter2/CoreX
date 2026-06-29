@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-gcc make
+
+      - name: Build
+        shell: msys2 {0}
+        run: make
+
+      - name: Rename binary
+        shell: msys2 {0}
+        run: cp build/CoreX.exe corex-windows-x64.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corex-windows-x64
+          path: corex-windows-x64.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: make
+
+      - name: Rename binary
+        run: cp build/CoreX corex-linux-x64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corex-linux-x64
+          path: corex-linux-x64
+
+  build-macos-x64:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: make
+
+      - name: Rename binary
+        run: cp build/CoreX corex-macos-x64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corex-macos-x64
+          path: corex-macos-x64
+
+  build-macos-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: make
+
+      - name: Rename binary
+        run: cp build/CoreX corex-macos-arm64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corex-macos-arm64
+          path: corex-macos-arm64
+
+  release:
+    needs: [build-windows, build-linux, build-macos-x64, build-macos-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release
+          cp artifacts/corex-windows-x64/corex-windows-x64.exe release/
+          cp artifacts/corex-linux-x64/corex-linux-x64 release/
+          cp artifacts/corex-macos-x64/corex-macos-x64 release/
+          cp artifacts/corex-macos-arm64/corex-macos-arm64 release/
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true

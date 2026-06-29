@@ -1,0 +1,122 @@
+#pragma once
+#include <string>
+
+enum class TokenType {
+    IDENTIFIER,
+    INT_LITERAL,
+    FLOAT_LITERAL,
+    STRING_LITERAL,
+    CHAR_LITERAL,
+
+    LET,
+    MUT,
+    CONST,
+    STRUCT,
+    ENUM,
+    UNION,
+    FUNC,
+    USING,
+    EXTERN,
+    IMPL,
+    TRAIT,
+    MODULE,
+    PUB,
+
+    IF,
+    ELSE,
+    FOR,
+    WHILE,
+    LOOP,
+    MATCH,
+    BREAK,
+    CONTINUE,
+    RETURN,
+    DEFER,
+    ASM,
+
+    TRUE,
+    FALSE,
+    NULLPTR,
+
+    TYPE_INT,
+    TYPE_I8,
+    TYPE_I16,
+    TYPE_I32,
+    TYPE_I64,
+    TYPE_UINT,
+    TYPE_U8,
+    TYPE_U16,
+    TYPE_U32,
+    TYPE_U64,
+    TYPE_FLOAT,
+    TYPE_F32,
+    TYPE_F64,
+    TYPE_CHAR,
+    TYPE_BOOLEAN,
+    TYPE_STRING,
+    TYPE_VOID,
+
+    KW_VOLATILE,
+    KW_UNSAFE,
+    KW_SIZEOF,
+    KW_ALIGNOF,
+    KW_AS,
+
+    PLUS,
+    MINUS,
+    STAR,
+    SLASH,
+    PERCENT,
+
+    PLUS_ASSIGN,
+    MINUS_ASSIGN,
+    STAR_ASSIGN,
+    SLASH_ASSIGN,
+    PERCENT_ASSIGN,
+
+    ASSIGN,
+    EQ,
+    NEQ,
+    LT,
+    GT,
+    LE,
+    GE,
+
+    AND_AND,
+    OR_OR,
+    BANG,
+
+    AMP,
+    PIPE,
+    CARET,
+    TILDE,
+    SHL,
+    SHR,
+
+    ARROW,
+    FAT_ARROW,
+    RANGE,
+    RANGE_INCLUSIVE,
+
+    COLON,
+    COLON_COLON,
+    SEMICOLON,
+    COMMA,
+    DOT,
+    AT,
+    QUESTION,
+
+    LPAREN,
+    RPAREN,
+    LBRACE,
+    RBRACE,
+    LBRACKET,
+    RBRACKET,
+
+    ATTRIBUTE,
+
+    END_OF_FILE,
+    UNKNOWN
+};
+
+std::string tokenTypeToString(TokenType type);

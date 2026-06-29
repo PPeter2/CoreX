@@ -1,0 +1,54 @@
+using "gui/window"
+using "std/io"
+
+extern "C" {
+    func c_printf(fmt: *const char) -> int
+    func sys_call_trigger(call_id: int, args: *mut int) -> int
+}
+
+#[packed]
+struct NetworkPacket {
+    id: int
+    payload_size: int
+}
+
+struct Vector<T> {
+    data: *mut T
+    size: int
+    capacity: int
+}
+
+enum WindowState {
+    Minimized
+    Maximized
+    Normal
+}
+
+func open_file(path: string) -> (int, int) {
+    let fd: int = sys_open(path)
+    defer sys_close(fd)
+    return (fd, 0)
+}
+
+func process_data(value: int) {
+    let x: int = 10
+    mut y: string = "Hello World"
+    let z: *volatile mut int = 0xB8000
+
+    if x > 5 {
+        c_printf("big")
+    } else {
+        c_printf("small")
+    }
+
+    for mut i: int = 0; i < 10; i = i + 1 {
+        x = x + i
+    }
+
+    let buffer: [int; 2048]
+    let slice: []int = buffer[0..100]
+
+    asm { "sysenter" }
+}
+
+let handler: func(int) = process_data
