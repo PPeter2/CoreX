@@ -1,6 +1,7 @@
 #include "corex/ast/DeclPrinter.h"
 #include "corex/ast/StmtPrinter.h"
 #include "corex/ast/TypePrinter.h"
+#include "corex/ast/AstPrinter.h"
 
 namespace {
 
@@ -103,6 +104,18 @@ std::string declToString(const Decl* decl, int indent) {
         case DeclKind::Using: {
             const UsingDecl* usingDecl = static_cast<const UsingDecl*>(decl);
             return indentString(indent) + "using \"" + usingDecl->path + "\"";
+        }
+
+        case DeclKind::GlobalVar: {
+            const GlobalVarDecl* globalVar = static_cast<const GlobalVarDecl*>(decl);
+            std::string result = indentString(indent) + (globalVar->isMutable ? "mut " : "let ") + globalVar->name;
+            if (globalVar->type != nullptr) {
+                result += ": " + typeToString(globalVar->type.get());
+            }
+            if (globalVar->initializer != nullptr) {
+                result += " = " + exprToString(globalVar->initializer.get());
+            }
+            return result;
         }
     }
 

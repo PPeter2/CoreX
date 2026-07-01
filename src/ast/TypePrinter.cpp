@@ -35,6 +35,21 @@ std::string typeToString(const Type* type) {
             result += ")";
             return result;
         }
+
+        case TypeKind::Function: {
+            const FunctionType* function = static_cast<const FunctionType*>(type);
+            std::string result = "(func (";
+            for (size_t i = 0; i < function->paramTypes.size(); i++) {
+                if (i > 0) result += " ";
+                result += typeToString(function->paramTypes[i].get());
+            }
+            result += ")";
+            if (function->returnType != nullptr) {
+                result += " -> " + typeToString(function->returnType.get());
+            }
+            result += ")";
+            return result;
+        }
     }
 
     return "unknown";

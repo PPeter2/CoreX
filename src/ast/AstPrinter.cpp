@@ -52,6 +52,11 @@ std::string exprToString(const Expr* expr) {
             std::string op = range->inclusive ? "..=" : "..";
             return "(" + op + " " + exprToString(range->start.get()) + " " + exprToString(range->end.get()) + ")";
         }
+
+        case ExprKind::Assign: {
+            const AssignExpr* assign = static_cast<const AssignExpr*>(expr);
+            return "(" + assign->op + " " + exprToString(assign->target.get()) + " " + exprToString(assign->value.get()) + ")";
+        }
     }
 
     return "unknown";

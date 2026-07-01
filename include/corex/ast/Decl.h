@@ -4,13 +4,15 @@
 #include <memory>
 #include "corex/ast/Type.h"
 #include "corex/ast/Stmt.h"
+#include "corex/ast/Expr.h"
 
 enum class DeclKind {
     Function,
     Struct,
     Enum,
     ExternBlock,
-    Using
+    Using,
+    GlobalVar
 };
 
 struct Decl {
@@ -83,4 +85,14 @@ struct UsingDecl : Decl {
 
     UsingDecl(std::string path, int line, int column)
         : Decl(DeclKind::Using, line, column), path(std::move(path)) {}
+};
+
+struct GlobalVarDecl : Decl {
+    std::string name;
+    bool isMutable;
+    std::unique_ptr<Type> type;
+    std::unique_ptr<Expr> initializer;
+
+    GlobalVarDecl(std::string name, bool isMutable, std::unique_ptr<Type> type, std::unique_ptr<Expr> initializer, int line, int column)
+        : Decl(DeclKind::GlobalVar, line, column), name(std::move(name)), isMutable(isMutable), type(std::move(type)), initializer(std::move(initializer)) {}
 };

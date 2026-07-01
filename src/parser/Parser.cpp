@@ -645,9 +645,7 @@ std::unique_ptr<FunctionDecl> Parser::parseFunctionDecl(bool isExternSignatureOn
 
     std::unique_ptr<BlockStmt> body = nullptr;
 
-    if (isExternSignatureOnly) {
-        body = nullptr;
-    } else {
+    if (!isExternSignatureOnly) {
         body = parseBlock();
     }
 

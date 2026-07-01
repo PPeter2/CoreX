@@ -8,7 +8,8 @@ enum class TypeKind {
     Pointer,
     Array,
     Slice,
-    Generic
+    Generic,
+    Function
 };
 
 struct Type {
@@ -59,4 +60,12 @@ struct GenericType : Type {
 
     GenericType(std::string name, std::vector<std::unique_ptr<Type>> arguments, int line, int column)
         : Type(TypeKind::Generic, line, column), name(std::move(name)), arguments(std::move(arguments)) {}
+};
+
+struct FunctionType : Type {
+    std::vector<std::unique_ptr<Type>> paramTypes;
+    std::unique_ptr<Type> returnType;
+
+    FunctionType(std::vector<std::unique_ptr<Type>> paramTypes, std::unique_ptr<Type> returnType, int line, int column)
+        : Type(TypeKind::Function, line, column), paramTypes(std::move(paramTypes)), returnType(std::move(returnType)) {}
 };
