@@ -3,7 +3,7 @@ CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude
 BUILD_DIR = build
 TARGET = $(BUILD_DIR)/CoreX
 
-SOURCES = $(wildcard src/lexer/*.cpp) $(wildcard src/ast/*.cpp) $(wildcard src/parser/*.cpp) $(wildcard src/driver/*.cpp)
+SOURCES = $(wildcard src/lexer/*.cpp) $(wildcard src/ast/*.cpp) $(wildcard src/parser/*.cpp) $(wildcard src/sema/*.cpp) $(wildcard src/driver/*.cpp)
 OBJECTS = $(patsubst src/%.cpp, $(BUILD_DIR)/%.o, $(SOURCES))
 
 all: $(TARGET)

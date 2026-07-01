@@ -4,6 +4,8 @@ using "std/io"
 extern "C" {
     func c_printf(fmt: *const char) -> int
     func sys_call_trigger(call_id: int, args: *mut int) -> int
+    func sys_open(path: string) -> int
+    func sys_close(fd: int) -> int
 }
 
 #[packed]
@@ -31,7 +33,7 @@ func open_file(path: string) -> (int, int) {
 }
 
 func process_data(value: int) {
-    let x: int = 10
+    mut x: int = 10
     mut y: string = "Hello World"
     let z: *volatile mut int = 0xB8000
 

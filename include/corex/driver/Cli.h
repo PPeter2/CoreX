@@ -14,6 +14,7 @@ private:
     static int commandType(const std::vector<std::string>& args);
     static int commandStmt(const std::vector<std::string>& args);
     static int commandParse(const std::vector<std::string>& args);
+    static int commandCheck(const std::vector<std::string>& args);
     static int commandInstall(const std::vector<std::string>& args);
     static int commandVersion(const std::vector<std::string>& args);
     static int commandHelp(const std::vector<std::string>& args);
