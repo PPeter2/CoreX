@@ -53,6 +53,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build
+        =
         run: make CXXFLAGS="-target x86_64-apple-macos11" LDFLAGS="-target x86_64-apple-macos11"
 
       - name: Rename binary
