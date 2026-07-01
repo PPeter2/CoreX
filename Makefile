@@ -1,33 +1,24 @@
 CXX = g++
-override CXXFLAGS += -std=c++17 -Wall -Wextra -Iinclude
-override LDFLAGS += 
-
-SRC_DIR = src
-INCLUDE_DIR = include/corex
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude
 BUILD_DIR = build
-
-SRCS = $(SRC_DIR)/lexer/TokenType.cpp \
-       $(SRC_DIR)/lexer/Lexer.cpp \
-       $(SRC_DIR)/driver/Cli.cpp \
-       $(SRC_DIR)/main.cpp
-
-OBJS = $(SRCS:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 TARGET = $(BUILD_DIR)/CoreX
+
+SOURCES = $(wildcard src/lexer/*.cpp) $(wildcard src/ast/*.cpp) $(wildcard src/parser/*.cpp) $(wildcard src/sema/*.cpp) $(wildcard src/driver/*.cpp)
+OBJECTS = $(patsubst src/%.cpp, $(BUILD_DIR)/%.o, $(SOURCES))
 
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
-	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+$(TARGET): $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJECTS)
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
-	@mkdir -p $(@D)
+$(BUILD_DIR)/%.o: src/%.cpp
+	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(BUILD_DIR)
 
-run: all
+run: $(TARGET)
 	./$(TARGET) tokens tests/lexer_full_feature.cx
 
 .PHONY: all clean run
