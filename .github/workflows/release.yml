@@ -46,7 +46,7 @@ jobs:
           name: corex-linux-x64
           path: corex-linux-x64
 
-    build-macos-x64:
+  build-macos-x64:
     runs-on: macos-14
     timeout-minutes: 10
     steps:
@@ -62,7 +62,6 @@ jobs:
         with:
           name: corex-macos-x64
           path: corex-macos-x64
-
 
   build-macos-arm64:
     runs-on: macos-14
