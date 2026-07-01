@@ -46,11 +46,12 @@ jobs:
           name: corex-linux-x64
           path: corex-linux-x64
 
-    build-macos-x64:
+  build-macos-x64:
     runs-on: macos-14
-    timeout-minutes: 10 
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+
       - name: Build
         run: make CXXFLAGS="-target x86_64-apple-macos11" LDFLAGS="-target x86_64-apple-macos11"
 
@@ -61,7 +62,6 @@ jobs:
         with:
           name: corex-macos-x64
           path: corex-macos-x64
-
 
   build-macos-arm64:
     runs-on: macos-14
