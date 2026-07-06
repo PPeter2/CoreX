@@ -1,0 +1,36 @@
+{
+  "name": "corex-syntax",
+  "displayName": "CoreX Language Support",
+  "description": "Syntax highlighting and language support for the CoreX programming language (.cx)",
+  "version": "0.1.0",
+  "publisher": "corex-lang",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "",
+  "contributes": {
+    "languages": [
+      {
+        "id": "corex",
+        "aliases": [
+          "CoreX",
+          "corex"
+        ],
+        "extensions": [
+          ".cx"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "corex",
+        "scopeName": "source.cx",
+        "path": "./syntaxes/corex.tmLanguage.json"
+      }
+    ]
+  }
+}
