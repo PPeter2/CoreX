@@ -6,9 +6,14 @@
 #include "corex/ast/StmtPrinter.h"
 #include "corex/ast/DeclPrinter.h"
 #include "corex/sema/Resolver.h"
+#include "corex/codegen/CodeGenX64.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cstdlib>
+#ifndef _WIN32
+#include <sys/wait.h>
+#endif
 
 namespace {
 
@@ -26,6 +31,64 @@ std::vector<Token> lexFile(const std::string& path) {
     std::string source = readFile(path);
     Lexer lexer(source);
     return lexer.tokenize();
+}
+
+std::string stemOf(const std::string& path) {
+    size_t slash = path.find_last_of("/\\");
+    std::string base = (slash == std::string::npos) ? path : path.substr(slash + 1);
+    size_t dot = base.find_last_of('.');
+    if (dot != std::string::npos && dot > 0) {
+        base = base.substr(0, dot);
+    }
+    return base;
+}
+
+// Shared by `build` and `run`: lex -> parse -> resolve -> codegen -> assemble/link.
+// CoreX does every language-aware step itself (lexing, parsing, semantic
+// analysis, x86-64 code generation); the system `cc` is only used the way
+// gcc/clang themselves use `as` and `ld` internally - to turn the assembly
+// CoreX already produced into a final binary, and to pull in the C runtime
+// startup files so `main` is callable and libc functions can be linked.
+int buildToExecutable(const std::string& inputPath, const std::string& outputPath) {
+    try {
+        std::vector<Token> tokens = lexFile(inputPath);
+        Parser parser(tokens);
+        std::unique_ptr<Program> program = parser.parseProgram();
+
+        Resolver resolver;
+        std::vector<SemanticError> errors = resolver.resolve(program.get());
+
+        if (!errors.empty()) {
+            for (const auto& error : errors) {
+                std::cerr << inputPath << ":" << error.line << ":" << error.column << ": error: " << error.message << std::endl;
+            }
+            return 1;
+        }
+
+        CodeGenX64 codegen;
+        std::string assembly = codegen.generate(program.get());
+
+        std::string asmPath = outputPath + ".s";
+        std::ofstream asmFile(asmPath);
+        if (!asmFile.is_open()) {
+            std::cerr << "corex: could not write " << asmPath << std::endl;
+            return 1;
+        }
+        asmFile << assembly;
+        asmFile.close();
+
+        std::string command = "cc \"" + asmPath + "\" -o \"" + outputPath + "\"";
+        int result = std::system(command.c_str());
+        if (result != 0) {
+            std::cerr << "corex: assembling/linking failed (see errors above)" << std::endl;
+            return 1;
+        }
+
+        return 0;
+    } catch (const std::exception& ex) {
+        std::cerr << "corex: " << ex.what() << std::endl;
+        return 1;
+    }
 }
 
 }
@@ -67,28 +130,19 @@ int Cli::commandBuild(const std::vector<std::string>& args) {
         return 1;
     }
 
-    try {
-        std::vector<Token> tokens = lexFile(args[0]);
-        Parser parser(tokens);
-        std::unique_ptr<Program> program = parser.parseProgram();
-
-        Resolver resolver;
-        std::vector<SemanticError> errors = resolver.resolve(program.get());
-
-        if (!errors.empty()) {
-            for (const auto& error : errors) {
-                std::cerr << args[0] << ":" << error.line << ":" << error.column << ": error: " << error.message << std::endl;
-            }
-            return 1;
+    std::string inputPath = args[0];
+    std::string outputPath = stemOf(inputPath);
+    for (size_t i = 1; i + 1 < args.size(); i++) {
+        if (args[i] == "-o") {
+            outputPath = args[i + 1];
         }
-
-        std::cout << "corex build: " << args[0] << " OK (" << program->declarations.size() << " declarations)" << std::endl;
-        std::cout << "corex build: code generation is not implemented yet" << std::endl;
-        return 0;
-    } catch (const std::exception& ex) {
-        std::cerr << "corex build: " << ex.what() << std::endl;
-        return 1;
     }
+
+    int result = buildToExecutable(inputPath, outputPath);
+    if (result == 0) {
+        std::cout << "corex build: " << outputPath << std::endl;
+    }
+    return result;
 }
 
 int Cli::commandRun(const std::vector<std::string>& args) {
@@ -97,27 +151,25 @@ int Cli::commandRun(const std::vector<std::string>& args) {
         return 1;
     }
 
-    try {
-        std::vector<Token> tokens = lexFile(args[0]);
-        Parser parser(tokens);
-        std::unique_ptr<Program> program = parser.parseProgram();
+    std::string inputPath = args[0];
+    std::string outputPath = stemOf(inputPath) + "_run";
 
-        Resolver resolver;
-        std::vector<SemanticError> errors = resolver.resolve(program.get());
-
-        if (!errors.empty()) {
-            for (const auto& error : errors) {
-                std::cerr << args[0] << ":" << error.line << ":" << error.column << ": error: " << error.message << std::endl;
-            }
-            return 1;
-        }
-
-        std::cout << "corex run: cannot execute yet, code generation is not implemented" << std::endl;
-        return 0;
-    } catch (const std::exception& ex) {
-        std::cerr << "corex run: " << ex.what() << std::endl;
-        return 1;
+    int buildResult = buildToExecutable(inputPath, outputPath);
+    if (buildResult != 0) {
+        return buildResult;
     }
+
+    std::string runCommand = "\"./" + outputPath + "\"";
+    int status = std::system(runCommand.c_str());
+
+#ifndef _WIN32
+    if (WIFEXITED(status)) {
+        return WEXITSTATUS(status);
+    }
+    return 1;
+#else
+    return status;
+#endif
 }
 
 int Cli::commandCheck(const std::vector<std::string>& args) {
@@ -267,15 +319,15 @@ void Cli::printUsage() {
     std::cout << "corex - the CoreX language toolchain" << std::endl;
     std::cout << std::endl;
     std::cout << "usage:" << std::endl;
-    std::cout << "  corex build <file.cx>     compile a CoreX source file" << std::endl;
-    std::cout << "  corex run <file.cx>       compile and run a CoreX source file" << std::endl;
-    std::cout << "  corex check <file.cx>     run semantic analysis and report errors" << std::endl;
-    std::cout << "  corex tokens <file.cx>    print the lexer token stream" << std::endl;
-    std::cout << "  corex expr <expression>  parse a single expression and print its AST" << std::endl;
-    std::cout << "  corex type <type>        parse a single type and print its AST" << std::endl;
-    std::cout << "  corex stmt <statement>   parse a single statement and print its AST" << std::endl;
-    std::cout << "  corex parse <file.cx>    parse an entire file and print the full AST" << std::endl;
-    std::cout << "  corex install <package>   install a CoreX package" << std::endl;
-    std::cout << "  corex version             print the installed corex version" << std::endl;
-    std::cout << "  corex help                show this message" << std::endl;
+    std::cout << "  corex build <file.cx> [-o out]  compile a CoreX source file to a native executable" << std::endl;
+    std::cout << "  corex run <file.cx>              compile and run a CoreX source file" << std::endl;
+    std::cout << "  corex check <file.cx>            run semantic analysis and report errors" << std::endl;
+    std::cout << "  corex tokens <file.cx>           print the lexer token stream" << std::endl;
+    std::cout << "  corex expr <expression>          parse a single expression and print its AST" << std::endl;
+    std::cout << "  corex type <type>                parse a single type and print its AST" << std::endl;
+    std::cout << "  corex stmt <statement>           parse a single statement and print its AST" << std::endl;
+    std::cout << "  corex parse <file.cx>            parse an entire file and print the full AST" << std::endl;
+    std::cout << "  corex install <package>          install a CoreX package" << std::endl;
+    std::cout << "  corex version                    print the installed corex version" << std::endl;
+    std::cout << "  corex help                       show this message" << std::endl;
 }
