@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
+#include <filesystem>
 #ifndef _WIN32
 #include <sys/wait.h>
 #endif
@@ -43,12 +44,6 @@ std::string stemOf(const std::string& path) {
     return base;
 }
 
-// Shared by `build` and `run`: lex -> parse -> resolve -> codegen -> assemble/link.
-// CoreX does every language-aware step itself (lexing, parsing, semantic
-// analysis, x86-64 code generation); the system `cc` is only used the way
-// gcc/clang themselves use `as` and `ld` internally - to turn the assembly
-// CoreX already produced into a final binary, and to pull in the C runtime
-// startup files so `main` is callable and libc functions can be linked.
 int buildToExecutable(const std::string& inputPath, const std::string& outputPath) {
     try {
         std::vector<Token> tokens = lexFile(inputPath);
@@ -152,7 +147,14 @@ int Cli::commandRun(const std::vector<std::string>& args) {
     }
 
     std::string inputPath = args[0];
-    std::string outputPath = stemOf(inputPath) + "_run";
+    std::filesystem::path runDir = std::filesystem::path("build") / "run";
+    std::error_code dirError;
+    std::filesystem::create_directories(runDir, dirError);
+    if (dirError) {
+        std::cerr << "corex run: could not create " << runDir.generic_string() << ": " << dirError.message() << std::endl;
+        return 1;
+    }
+    std::string outputPath = (runDir / (stemOf(inputPath) + "_run")).generic_string();
 
     int buildResult = buildToExecutable(inputPath, outputPath);
     if (buildResult != 0) {
