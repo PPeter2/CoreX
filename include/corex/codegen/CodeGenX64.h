@@ -7,14 +7,17 @@
 #include "corex/ast/Stmt.h"
 #include "corex/ast/Expr.h"
 #include "corex/ast/Type.h"
+#include "corex/codegen/CodegenTarget.h"
 
 class CodeGenX64 {
 public:
-    CodeGenX64();
+    explicit CodeGenX64(CodegenTarget target = CodegenTarget::hostDefault());
 
     std::string generate(const Program* program);
 
 private:
+    CodegenTarget target;
+
     std::unordered_map<std::string, size_t> functionArity;
 
     std::string textSection;
@@ -30,6 +33,10 @@ private:
     std::string newLabel(const std::string& hint);
     void emit(const std::string& line);
     void emitLabel(const std::string& label);
+
+    int maxRegisterArgs() const;
+    const char* argRegister(int index) const;
+    int shadowSpaceBytes() const;
 
     void collectSignatures(const Program* program);
     void checkArity(const std::string& name, size_t argCount, int line, int column) const;

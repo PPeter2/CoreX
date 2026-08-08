@@ -2,8 +2,8 @@
 #include <stdexcept>
 #include <sstream>
 
-CodeGenX64::CodeGenX64()
-    : labelCounter(0), stringCounter(0), nextStackOffset(0) {}
+CodeGenX64::CodeGenX64(CodegenTarget target)
+    : target(target), labelCounter(0), stringCounter(0), nextStackOffset(0) {}
 
 void CodeGenX64::error(const std::string& message, int line, int column) const {
     std::ostringstream oss;
@@ -21,6 +21,23 @@ void CodeGenX64::emit(const std::string& line) {
 
 void CodeGenX64::emitLabel(const std::string& label) {
     functionBuffer += label + ":\n";
+}
+
+int CodeGenX64::maxRegisterArgs() const {
+    return target.callingConvention == CallingConvention::Win64 ? 4 : 6;
+}
+
+const char* CodeGenX64::argRegister(int index) const {
+    static const char* systemV[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+    static const char* win64[4]   = {"rcx", "rdx", "r8", "r9"};
+    if (target.callingConvention == CallingConvention::Win64) {
+        return win64[index];
+    }
+    return systemV[index];
+}
+
+int CodeGenX64::shadowSpaceBytes() const {
+    return target.callingConvention == CallingConvention::Win64 ? 32 : 0;
 }
 
 void CodeGenX64::pushScope() {
@@ -139,7 +156,7 @@ std::string CodeGenX64::generate(const Program* program) {
         }
     }
 
-    std::ostringstream out;
+std::ostringstream out;
     out << "    .intel_syntax noprefix\n";
     out << "    .text\n";
     out << textSection;
@@ -147,7 +164,9 @@ std::string CodeGenX64::generate(const Program* program) {
         out << "    .section .rodata\n";
         out << dataSection;
     }
-    out << "    .section .note.GNU-stack,\"\",@progbits\n";
+    if (target.objectFormat == ObjectFormat::Elf) {
+        out << "    .section .note.GNU-stack,\"\",@progbits\n";
+    }
     return out.str();
 }
 
@@ -157,8 +176,6 @@ std::string slotOperand(int offset) {
     if (offset < 0) return "[rbp - " + std::to_string(-offset) + "]";
     return "[rbp + " + std::to_string(offset) + "]";
 }
-
-const char* kArgRegisters[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 long long parseIntLiteral(const std::string& raw) {
     std::string s;
@@ -184,8 +201,9 @@ void CodeGenX64::genFunction(const FunctionDecl* decl) {
         return;
     }
 
-    if (decl->params.size() > 6) {
-        error("functions with more than 6 parameters are not yet supported by codegen", decl->line, decl->column);
+    if (decl->params.size() > static_cast<size_t>(maxRegisterArgs())) {
+        error("functions with more than " + std::to_string(maxRegisterArgs()) +
+              " parameters are not yet supported by codegen for this target", decl->line, decl->column);
     }
     for (const auto& param : decl->params) {
         if (!isSupportedType(param.type.get())) {
@@ -226,7 +244,7 @@ void CodeGenX64::genFunction(const FunctionDecl* decl) {
     emit("leave");
     emit("ret");
 
-    int frameSize = nextStackOffset;
+    int frameSize = nextStackOffset + shadowSpaceBytes();
     if (frameSize % 16 != 0) {
         frameSize += 16 - (frameSize % 16);
     }
@@ -244,7 +262,7 @@ void CodeGenX64::genFunction(const FunctionDecl* decl) {
 
 void CodeGenX64::genParamBinding(const Param& param, int index) {
     int offset = declareLocal(param.name, param.type ? param.type->line : 0, param.type ? param.type->column : 0);
-    emit("mov " + slotOperand(offset) + ", " + kArgRegisters[index]);
+    emit("mov " + slotOperand(offset) + ", " + argRegister(index));
 }
 
 void CodeGenX64::genStatements(const std::vector<std::unique_ptr<Stmt>>& stmts) {
@@ -486,8 +504,9 @@ void CodeGenX64::genCallExpr(const CallExpr* expr) {
     }
     const std::string& name = static_cast<const IdentifierExpr*>(expr->callee.get())->name;
 
-    if (expr->arguments.size() > 6) {
-        error("calls with more than 6 arguments are not yet supported by codegen", expr->line, expr->column);
+    if (expr->arguments.size() > static_cast<size_t>(maxRegisterArgs())) {
+        error("calls with more than " + std::to_string(maxRegisterArgs()) +
+              " arguments are not yet supported by codegen for this target", expr->line, expr->column);
     }
     checkArity(name, expr->arguments.size(), expr->line, expr->column);
 
@@ -497,7 +516,7 @@ void CodeGenX64::genCallExpr(const CallExpr* expr) {
     }
 
     for (size_t i = expr->arguments.size(); i-- > 0; ) {
-        emit(std::string("pop ") + kArgRegisters[i]);
+        emit(std::string("pop ") + argRegister(static_cast<int>(i)));
     }
 
     emit("call " + name);

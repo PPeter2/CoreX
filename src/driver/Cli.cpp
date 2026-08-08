@@ -44,7 +44,20 @@ std::string stemOf(const std::string& path) {
     return base;
 }
 
-int buildToExecutable(const std::string& inputPath, const std::string& outputPath) {
+bool parseTargetFlag(const std::vector<std::string>& args, CodegenTarget& outTarget) {
+    outTarget = CodegenTarget::hostDefault();
+    for (size_t i = 0; i + 1 < args.size(); i++) {
+        if (args[i] == "--target") {
+            if (!CodegenTarget::fromName(args[i + 1], outTarget)) {
+                std::cerr << "corex: unknown --target '" << args[i + 1] << "' (expected linux, macos, or windows)" << std::endl;
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+int buildToExecutable(const std::string& inputPath, const std::string& outputPath, CodegenTarget target) {
     try {
         std::vector<Token> tokens = lexFile(inputPath);
         Parser parser(tokens);
@@ -60,7 +73,7 @@ int buildToExecutable(const std::string& inputPath, const std::string& outputPat
             return 1;
         }
 
-        CodeGenX64 codegen;
+        CodeGenX64 codegen(target);
         std::string assembly = codegen.generate(program.get());
 
         std::string asmPath = outputPath + ".s";
@@ -125,6 +138,11 @@ int Cli::commandBuild(const std::vector<std::string>& args) {
         return 1;
     }
 
+    CodegenTarget target;
+    if (!parseTargetFlag(args, target)) {
+        return 1;
+    }
+
     std::string inputPath = args[0];
     std::string outputPath = stemOf(inputPath);
     for (size_t i = 1; i + 1 < args.size(); i++) {
@@ -133,7 +151,7 @@ int Cli::commandBuild(const std::vector<std::string>& args) {
         }
     }
 
-    int result = buildToExecutable(inputPath, outputPath);
+    int result = buildToExecutable(inputPath, outputPath, target);
     if (result == 0) {
         std::cout << "corex build: " << outputPath << std::endl;
     }
@@ -146,7 +164,14 @@ int Cli::commandRun(const std::vector<std::string>& args) {
         return 1;
     }
 
+    CodegenTarget target;
+    if (!parseTargetFlag(args, target)) {
+        return 1;
+    }
+
     std::string inputPath = args[0];
+
+    // `run` is meant to be throwaway
     std::filesystem::path runDir = std::filesystem::path("build") / "run";
     std::error_code dirError;
     std::filesystem::create_directories(runDir, dirError);
@@ -156,7 +181,7 @@ int Cli::commandRun(const std::vector<std::string>& args) {
     }
     std::string outputPath = (runDir / (stemOf(inputPath) + "_run")).generic_string();
 
-    int buildResult = buildToExecutable(inputPath, outputPath);
+    int buildResult = buildToExecutable(inputPath, outputPath, target);
     if (buildResult != 0) {
         return buildResult;
     }
@@ -321,8 +346,11 @@ void Cli::printUsage() {
     std::cout << "corex - the CoreX language toolchain" << std::endl;
     std::cout << std::endl;
     std::cout << "usage:" << std::endl;
-    std::cout << "  corex build <file.cx> [-o out]  compile a CoreX source file to a native executable" << std::endl;
-    std::cout << "  corex run <file.cx>              compile and run a CoreX source file" << std::endl;
+    std::cout << "  corex build <file.cx> [-o out] [--target linux|macos|windows]" << std::endl;
+    std::cout << "                                    compile a CoreX source file to a native executable" << std::endl;
+    std::cout << "                                    (--target defaults to the platform you're running on)" << std::endl;
+    std::cout << "  corex run <file.cx> [--target linux|macos|windows]" << std::endl;
+    std::cout << "                                    compile and run a CoreX source file" << std::endl;
     std::cout << "  corex check <file.cx>            run semantic analysis and report errors" << std::endl;
     std::cout << "  corex tokens <file.cx>           print the lexer token stream" << std::endl;
     std::cout << "  corex expr <expression>          parse a single expression and print its AST" << std::endl;
